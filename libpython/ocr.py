@@ -24,8 +24,8 @@ def get_result(result_list):
     :return: 返回相应的词典result['num_of_results'] 为结果数量，result[i]表示第i条结果
     例：result[i][typeID] 表示第i条结果的typeID
     '''
-    results = {}
-    results['num_of_results'] = len(result_list)
+    results = []
+    #results['num_of_results'] = len(result_list)
     for i, result_item in enumerate(result_list):
 
         result_dict = {}
@@ -51,10 +51,10 @@ def get_result(result_list):
 
         result_dict['relativeTypeID'] = result_item[8]
         result_dict['relativeNumID'] = result_item[9]
-        results[i] = result_dict
-    final = json.dumps(results)
-    return final
-    #return results
+        result_json =json.dumps(result_dict)
+        results.append(result_json)
+
+    return results
 
 
 ret = ocr_recog("image")

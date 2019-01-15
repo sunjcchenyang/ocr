@@ -12,4 +12,5 @@
    dir = "./dir/"
 
 [python]
-   lib_dir = "libpython"
+   lib_dir = "/Users/sidianzhong/go/src/github.com/yanHuang/OcrServer/libpython"
+   lib_name= "python_ocr_new"

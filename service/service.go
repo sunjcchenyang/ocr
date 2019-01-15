@@ -1,13 +1,14 @@
 package service
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/labstack/echo"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"os"
 	"sync"
-
-	"github.com/labstack/echo"
 )
 
 //定义枚举
@@ -24,6 +25,7 @@ type Service struct {
 	//MgDb    *mgo.Session
 	//Action  map[string]string
 	//进行添加python库对应的信息
+	Pythonlib *PythonLib
 	sync.RWMutex
 }
 //point
@@ -128,6 +130,7 @@ func NewService() *Service {
 	service.Address = Conf.ServerC.Addr
 	//service.Action = make(map[string]string)
 	//service.MgDb = Newmgo()
+	service.Pythonlib = new(PythonLib)
 	return service
 }
 
@@ -137,6 +140,7 @@ func (ser *Service) Start() {
 	//action and table
 	//go mapped(ser)
 	//start the web service
+	go initPythonLib(ser)
 	go Server(ser)
 }
 
@@ -146,15 +150,48 @@ func (ser *Service) Close() {
 	//ser.MgDb.Close()
 }
 
+//
+func initPythonLib(ser *Service)  {
+	ser.Pythonlib = NewLib()
+	//importModule
+	ser.Pythonlib.LoadLib(Conf.PythonC.LibDir,Conf.PythonC.LibName)
+	ser.Pythonlib.Init()
+}
 //Server the server is to do web work
 func Server(service *Service) error {
 
 	irs := echo.New()
 	irs.POST("/OcrProcess", handler)
 	irs.GET("/download",staticServer)
+	irs.GET("/test",testPython)
 	//add 接口
 	//irs.GET("/akbusdt", getAbkHandler)
 	irs.Start(service.Address)
+	return nil
+}
+func testPython(ctx echo.Context) error {
+	ret :=gService.Pythonlib.GetResult()
+	fmt.Println(ret)
+	var m2 map[string]Text
+	json.Unmarshal([]byte(ret),&m2)
+	fmt.Println(m2)
+	result :=[]Text{}
+	for key,item := range m2 {
+		fmt.Println("kkkk===>>>>",key)
+		fmt.Println("value==>>>",item)
+		result = append(result,item)
+	}
+
+	ctx.JSON(http.StatusOK, &result)
+	return nil
+}
+func getTextResult(textRet *[]*Text ) error  {
+	ocrResult :=gService.Pythonlib.GetResult()
+	var tempResult map[string]Text
+	json.Unmarshal([]byte(ocrResult),&tempResult)
+	for _,item := range tempResult {
+		(*textRet) = append((*textRet),&item)
+	}
 	return nil
 }
 func handler(ctx echo.Context) error {
@@ -182,19 +219,7 @@ func handler(ctx echo.Context) error {
 	nullMap.LabelPic ="LabelPic.png"
 	switch controlValue {
 	case control_ocr_only:
-		TextDatas:=&Text{
-			TypeID:0,
-			NumID:0,
-			Info:"test info",
-			Wide:50,
-			Hight:100,
-			Points: &Point{
-				CoordinateType:3,
-				RelativeTypeID:30,
-				RelativeNumID:20,
-			},
-		}
-		nullMap.TextRet = append(nullMap.TextRet,TextDatas)
+		getTextResult(&nullMap.TextRet)
 	case control_dev_only:
 		//AirSwitch
 		AirSwitchDatas := &AirSwitch{
@@ -240,19 +265,7 @@ func handler(ctx echo.Context) error {
 		}
 		nullMap.TerminalRet = append(nullMap.TerminalRet,TerminalDatas)
 	case control_orc_dev:
-		TextDatas:=&Text{
-			TypeID:0,
-			NumID:0,
-			Info:"test info",
-			Wide:50,
-			Hight:100,
-			Points: &Point{
-				CoordinateType:3,
-				RelativeTypeID:30,
-				RelativeNumID:20,
-			},
-		}
-		nullMap.TextRet = append(nullMap.TextRet,TextDatas)
+		getTextResult(&nullMap.TextRet)
 		//AirSwitch
 		AirSwitchDatas := &AirSwitch{
 			TypeID:1,

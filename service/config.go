@@ -29,6 +29,7 @@ type ServerConf struct {
 // libpython
 type PythonConf struct {
 	LibDir string
+	LibName string
 }
 
 // Config ...
